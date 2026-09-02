@@ -1,6 +1,6 @@
 # n8n-nodes-dokifly
 
-Dokifly converts HTML, public URLs, and saved Handlebars templates into pixel-perfect PDFs (Playwright + Chromium). This package is a community node so n8n workflows can generate PDFs, create templates, list hosted files, and run Growth-plan batch jobs through the Dokifly API.
+Dokifly converts HTML, public URLs, and saved Handlebars templates into pixel-perfect PDFs (Playwright + Chromium). This package is a community node so n8n workflows can generate PDFs, list hosted files, and run Growth-plan batch jobs through the Dokifly API.
 
 ## Install
 
@@ -24,7 +24,6 @@ Full API reference: [https://dokifly.io/docs](https://dokifly.io/docs)
 | --- | --- | --- |
 | PDF | Generate | `POST /v1/pdf/generate` |
 | PDF | Get Usage | `GET /v1/pdf/usage` |
-| Template | Create | `POST /v1/templates` |
 | File | Get Many | `GET /v1/pdf/files` |
 | File | Delete | `DELETE /v1/pdf/files/:fileId` |
 | Batch | Create | `POST /v1/pdf/batch` |
@@ -37,9 +36,7 @@ This node is an action node only. There is no Dokifly Trigger. `webhookUrl` is a
 
 **HTML to PDF binary to email attachment.** Set Resource to PDF and Operation to Generate. Source HTML, Output Binary Data. Pass the `data` binary property into an email node as an attachment.
 
-**Template plus JSON from the previous node to a download URL.** Create or pick a template, set Generate Source to Template, map Data from the previous item, and set Output to Download URL. The item includes `url` and `expiresAt`.
-
-**Create template, then generate.** Use Template → Create with name and HTML. Then Generate with Source Template, select the new template from the list, and send Handlebars Data. Saved template sample data is not applied at generate time; the caller must send Data.
+**Template plus JSON from the previous node to a download URL.** Pick a saved template from the Dokifly dashboard, set Generate Source to Template, map Data from the previous item (or edit the loaded sample fields), and set Output to Download URL. The item includes `url` and `expiresAt`.
 
 **Batch create with wait.** On a Growth key, Resource Batch → Create. Provide an Items JSON array (max 50). Leave Wait for Completion on. The node polls until the job is `completed` or `partial`, then each item URL is available on the job JSON. Use Get a batch job later if you turn Wait off.
 
@@ -70,11 +67,10 @@ Use `npm run dev` and open `http://localhost:5678`.
 1. Credential test succeeds against `GET /v1/pdf/usage` with a real `dk_` key.
 2. PDF Generate from HTML, output Binary — next node sees a binary PDF.
 3. PDF Generate from HTML, output Download URL — JSON with `url` and `expiresAt`.
-4. PDF Generate Source Template: the Resource Locator lists saved templates.
-5. Template Create with name and HTML.
-6. File Get Many (may be empty; that is success).
-7. Batch Create with Wait on a Growth key, or confirm `403 plan_required` on Free with a readable message.
-8. Invalid API key → credential/auth message, not a stack trace.
+4. PDF Generate Source Template: the Resource Locator lists saved templates, and Data fields load from the template sample JSON.
+5. File Get Many (may be empty; that is success).
+6. Batch Create with Wait on a Growth key, or confirm `403 plan_required` on Free with a readable message.
+7. Invalid API key → credential/auth message, not a stack trace.
 
 ## Links
 

@@ -8,6 +8,9 @@ import type {
 	INodeExecutionData,
 	INodeListSearchResult,
 	JsonObject,
+	ResourceMapperField,
+	ResourceMapperFields,
+	ResourceMapperValue,
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, sleep } from 'n8n-workflow';
 
@@ -438,6 +441,150 @@ export function getLocatorId(
 	return this.getNodeParameter(parameterName, itemIndex, '', {
 		extractValue: true,
 	}) as string;
+}
+
+function asJsonObject(value: unknown): IDataObject {
+	let current = value;
+	if (typeof current === 'string') {
+		const trimmed = current.trim();
+		if (!trimmed) {
+			return {};
+		}
+		try {
+			current = JSON.parse(trimmed) as unknown;
+		} catch {
+			return {};
+		}
+	}
+
+	if (current && typeof current === 'object' && !Array.isArray(current)) {
+		return current as IDataObject;
+	}
+
+	return {};
+}
+
+function sampleValueToField(key: string, value: unknown): ResourceMapperField | undefined {
+	if (value === undefined || value === null) {
+		return undefined;
+	}
+
+	const field: ResourceMapperField = {
+		id: key,
+		displayName: key,
+		defaultMatch: true,
+		canBeUsedToMatch: true,
+		required: false,
+		display: true,
+	};
+
+	if (typeof value === 'string') {
+		field.type = 'string';
+		field.defaultValue = value;
+		return field;
+	}
+
+	if (typeof value === 'number' && Number.isFinite(value)) {
+		field.type = 'number';
+		field.defaultValue = value;
+		return field;
+	}
+
+	if (typeof value === 'boolean') {
+		field.type = 'boolean';
+		field.defaultValue = value;
+		return field;
+	}
+
+	if (Array.isArray(value)) {
+		field.type = 'array';
+		field.defaultValue = JSON.stringify(value);
+		return field;
+	}
+
+	if (typeof value === 'object') {
+		field.type = 'object';
+		field.defaultValue = JSON.stringify(value);
+		return field;
+	}
+
+	field.type = 'string';
+	field.defaultValue = String(value);
+	return field;
+}
+
+export async function getTemplateDataFields(
+	this: ILoadOptionsFunctions,
+): Promise<ResourceMapperFields> {
+	const templateId = this.getNodeParameter('templateId', '', {
+		extractValue: true,
+	}) as string;
+
+	if (!templateId) {
+		return { fields: [] };
+	}
+
+	const response = (await dokiflyApiRequest.call(
+		this,
+		'GET',
+		`/v1/templates/${encodeURIComponent(templateId)}`,
+	)) as IDataObject;
+
+	const sample = asJsonObject(response.data);
+	const fields = Object.entries(sample)
+		.map(([key, value]) => sampleValueToField(key, value))
+		.filter((field): field is ResourceMapperField => field !== undefined);
+
+	return { fields };
+}
+
+export function templateDataToObject(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	context: ItemContext,
+): IDataObject | undefined {
+	const mapper = this.getNodeParameter('templateData', itemIndex) as ResourceMapperValue;
+
+	if (mapper.mappingMode === 'autoMapInputData') {
+		return parseJsonObject(this.getInputData()[itemIndex]?.json, 'Data', this.getNode(), context);
+	}
+
+	const value = mapper.value;
+	if (!value || typeof value !== 'object' || Array.isArray(value)) {
+		return undefined;
+	}
+
+	const schemaById = new Map((mapper.schema ?? []).map((field) => [field.id, field]));
+	const result: IDataObject = {};
+
+	for (const [key, entry] of Object.entries(value)) {
+		if (entry === undefined || entry === null || entry === '') {
+			continue;
+		}
+
+		const fieldType = schemaById.get(key)?.type;
+		if ((fieldType === 'object' || fieldType === 'array') && typeof entry === 'string') {
+			try {
+				result[key] = JSON.parse(entry) as IDataObject;
+			} catch {
+				throw operationError(
+					this.getNode(),
+					`The '${key}' value must be valid JSON`,
+					context,
+					'Object and array fields need a JSON value.',
+				);
+			}
+			continue;
+		}
+
+		result[key] = entry;
+	}
+
+	if (Object.keys(result).length === 0) {
+		return undefined;
+	}
+
+	return result;
 }
 
 export function buildPdfOptions(pdfOptions: IDataObject): IDataObject {

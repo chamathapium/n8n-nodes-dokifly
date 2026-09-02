@@ -113,11 +113,43 @@ export const pdfFields: INodeProperties[] = [
 			show: {
 				resource: ['pdf'],
 				operation: ['generate'],
-				source: ['html', 'template'],
+				source: ['html'],
+			},
+		},
+		description: 'JSON object merged into Handlebars placeholders',
+	},
+	{
+		displayName: 'Data',
+		name: 'templateData',
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		displayOptions: {
+			show: {
+				resource: ['pdf'],
+				operation: ['generate'],
+				source: ['template'],
 			},
 		},
 		description:
-			'JSON object merged into Handlebars placeholders. Saved template sample data is not used by generate — send data here.',
+			'Handlebars values loaded from the template sample JSON. Edit them here, or map from the previous item. Generate sends this object as data.',
+		typeOptions: {
+			loadOptionsDependsOn: ['templateId.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'getTemplateDataFields',
+				mode: 'add',
+				addAllFields: true,
+				supportAutoMap: true,
+				hideNoDataError: true,
+				fieldWords: {
+					singular: 'field',
+					plural: 'fields',
+				},
+			},
+		},
 	},
 	{
 		displayName: 'Output',

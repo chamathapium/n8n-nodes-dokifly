@@ -11,7 +11,6 @@ import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workf
 import { batchFields, batchOperations } from './descriptions/BatchDescription';
 import { fileFields, fileOperations } from './descriptions/FileDescription';
 import { pdfFields, pdfOperations } from './descriptions/PdfDescription';
-import { templateFields, templateOperations } from './descriptions/TemplateDescription';
 import {
 	asObjectList,
 	buildPdfOptions,
@@ -19,6 +18,7 @@ import {
 	dokiflyApiRequest,
 	generatePdfBinary,
 	getLocatorId,
+	getTemplateDataFields,
 	operationError,
 	parseJsonArray,
 	parseJsonObject,
@@ -26,6 +26,7 @@ import {
 	searchFiles,
 	searchJobs,
 	searchTemplates,
+	templateDataToObject,
 	toItems,
 } from './GenericFunctions';
 
@@ -62,10 +63,6 @@ export class Dokifly implements INodeType {
 						value: 'pdf',
 					},
 					{
-						name: 'Template',
-						value: 'template',
-					},
-					{
 						name: 'File',
 						value: 'file',
 					},
@@ -77,11 +74,9 @@ export class Dokifly implements INodeType {
 				default: 'pdf',
 			},
 			...pdfOperations,
-			...templateOperations,
 			...fileOperations,
 			...batchOperations,
 			...pdfFields,
-			...templateFields,
 			...fileFields,
 			...batchFields,
 		],
@@ -92,6 +87,9 @@ export class Dokifly implements INodeType {
 			searchTemplates,
 			searchFiles,
 			searchJobs,
+		},
+		resourceMapping: {
+			getTemplateDataFields,
 		},
 	};
 
@@ -154,9 +152,6 @@ async function executeResource(
 ): Promise<INodeExecutionData[]> {
 	if (resource === 'pdf') {
 		return await executePdf.call(this, operation, itemIndex, itemCount);
-	}
-	if (resource === 'template') {
-		return await executeTemplate.call(this, operation, itemIndex, itemCount);
 	}
 	if (resource === 'file') {
 		return await executeFile.call(this, operation, itemIndex, itemCount);
@@ -233,12 +228,7 @@ async function executePdf(
 			throw operationError(this.getNode(), 'Select a template to generate a PDF', context);
 		}
 		body.templateId = templateId;
-		const data = parseJsonObject(
-			this.getNodeParameter('data', itemIndex),
-			'Data',
-			this.getNode(),
-			context,
-		);
+		const data = templateDataToObject.call(this, itemIndex, context);
 		if (data) {
 			body.data = data;
 		}
@@ -268,47 +258,6 @@ async function executePdf(
 		context,
 	)) as IDataObject;
 
-	return [{ json: response, pairedItem: { item: itemIndex } }];
-}
-
-async function executeTemplate(
-	this: IExecuteFunctions,
-	operation: string,
-	itemIndex: number,
-	itemCount: number,
-): Promise<INodeExecutionData[]> {
-	const context = { itemIndex, itemCount };
-
-	if (operation !== 'create') {
-		throw operationError(this.getNode(), `The operation ${operation} is not supported`, context);
-	}
-
-	const body: IDataObject = {
-		name: this.getNodeParameter('name', itemIndex) as string,
-		html: this.getNodeParameter('html', itemIndex) as string,
-	};
-	const description = this.getNodeParameter('description', itemIndex) as string;
-	if (description) {
-		body.description = description;
-	}
-	const data = parseJsonObject(
-		this.getNodeParameter('data', itemIndex),
-		'Data',
-		this.getNode(),
-		context,
-	);
-	if (data) {
-		body.data = data;
-	}
-
-	const response = (await dokiflyApiRequest.call(
-		this,
-		'POST',
-		'/v1/templates',
-		body,
-		undefined,
-		context,
-	)) as IDataObject;
 	return [{ json: response, pairedItem: { item: itemIndex } }];
 }
 
