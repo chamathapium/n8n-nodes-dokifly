@@ -15,7 +15,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/chamathapium/n8n-nodes-dokifly.git"
+		"url": "git+https://github.com/chamathapium/n8n-nodes-dokifly.git"
 	},
 	"bugs": {
 		"url": "https://github.com/chamathapium/n8n-nodes-dokifly/issues"
@@ -32,6 +32,9 @@
 	"files": [
 		"dist"
 	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"n8n": {
 		"n8nNodesApiVersion": 1,
 		"strict": true,
