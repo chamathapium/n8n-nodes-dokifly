@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-dokifly",
+	"node": "n8n-nodes-dokifly.dokifly",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Development", "Productivity", "Marketing & Content"],
